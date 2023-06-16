@@ -19,11 +19,22 @@ int horizpos = 90;
 int vertpos = 90;
 
 //Smart Home
-SoftwareSerial myserial(5, 6); // Bluetooth: Tx = 5, Rx = 6
+SoftwareSerial myserial(0, 1); // Bluetooth: Tx = 5, Rx = 6
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 // rain
 #define ra A6
 int value;
+
+//garage
+#include <Servo.h>
+
+const uint8_t sensor1_pin = 5;
+const uint8_t sensor2_pin = 6;
+const uint8_t servo_pin = 11;
+
+const uint8_t sensor_threshold = 1;
+
+Servo myServo;
 
 
 void setup() 
@@ -34,20 +45,30 @@ void setup()
   vert.write(90);
   horiz.write(90);
   delay(1000);
+
 //Smart Home
+
   myserial.begin(9600);
   Serial.begin(9600);
   pinMode(3, OUTPUT);
   pinMode(4, OUTPUT);
   pinMode(7, OUTPUT);
   pinMode(8, OUTPUT);
+  pinMode(11, OUTPUT);
   myserial.write("Hello in Bluetooth");
 
   lcd.init();
   lcd.backlight();
 
+  pinMode(A6, INPUT);
+
   // GAS
   pinMode(A7, INPUT);
+  
+  //garage
+  pinMode(sensor1_pin, INPUT);
+  pinMode(sensor2_pin, INPUT);
+  myServo.attach(servo_pin);
 }
 
 void loop() {
@@ -55,6 +76,7 @@ void loop() {
    gas();
    rain();
    Lighting();
+   garage();
 }
 
 void track() {
@@ -127,26 +149,31 @@ void track() {
 
   delay(DTIME);
 }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
 //Smart Home
 
 // GAS
 void gas() 
 {
   int val = analogRead(A7);
-  if (val > 460) {
+  if (val > 503) {
     digitalWrite(3, HIGH);
     lcd.setCursor(0,0);
     lcd.print("Fire  on");
-    myserial.write("15");
+    myserial.write("15");  
+    Serial.println(15);
     delay(1000);
+
   } else {
     digitalWrite(3, LOW);
     lcd.setCursor(0,0);
    lcd.print("          ");
   }
- Serial.println(val);
-  delay(200);
+
+ //Serial.println(val);
+  //delay(200);
 }
 
 
@@ -157,15 +184,19 @@ void rain()
   if (value >= 200) {
     lcd.setCursor(0,1);
     lcd.print("Rain on ");
-    myserial.write("16");
+    Serial.println("16");
+    myserial.write("16"); 
   }
+
   else {
+    digitalWrite(11, LOW);
     lcd.setCursor(0,1);
     lcd.print("          ");
     //myserial.write("0");
   }
-  Serial.println("RAIN = " + String(value));
-  delay(100);
+  
+  //Serial.println("RAIN = " + String(value));
+  //delay(100);
 }
 
 //Lighting
@@ -198,10 +229,24 @@ void rain()
       digitalWrite(8, LOW);
     }
   }
-
+/*
   if (Serial.available()) {
     myserial.write(Serial.read());
   }
+  */
 }
 
+void garage() {
+    bool sensor1_value = digitalRead(sensor1_pin);
+  bool sensor2_value = digitalRead(sensor2_pin);
 
+  if (sensor1_value == LOW) {
+    // Open the door
+    myServo.write(180); // Rotate the servo to open the door
+  }
+
+  if (sensor2_value == LOW) {
+    // Close the door
+    myServo.write(0); // Rotate the servo to close the door
+  }
+}
